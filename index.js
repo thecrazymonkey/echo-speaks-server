@@ -41,6 +41,11 @@ runTimeData.serviceStartTime = Date.now(); //Returns time in millis
 runTimeData.eventCount = 0;
 runTimeData.echoDevices = {};
 
+// changes to support local deployment
+const https = require('https');
+const privateKey = fs.readFileSync( 'key.pem' );
+const certificate = fs.readFileSync( 'certificate.pem' );
+
 function initConfig() {
     return new Promise(function(resolve, reject) {
         // logger.debug('dataFolder: ' + dataFolder);
@@ -68,12 +73,12 @@ function loadConfig() {
     configFile.set('settings.amazonDomain', process.env.amazonDomain || (configData.settings.amazonDomain || 'amazon.com'));
     configFile.set('settings.smartThingsUrl', process.env.smartThingsUrl || configData.settings.smartThingsUrl);
     if (process.env.serviceDebug === true || process.env.serviceDebug === 'true') console.log('** SERVICE DEBUG IS ACTIVE **');
-    configFile.set('settings.serviceDebug', (process.env.serviceDebug === true || process.env.serviceDebug === 'true'));
-    configFile.set('settings.serviceTrace', (process.env.serviceTrace === true || process.env.serviceTrace === 'true'));
+    configFile.set('settings.serviceDebug', (process.env.serviceDebug === true || process.env.serviceDebug === 'true' || configData.settings.serviceDebug));
+    configFile.set('settings.serviceTrace', (process.env.serviceTrace === true || process.env.serviceTrace === 'true' || configData.settings.serviceTrace));
     configFile.set('settings.regionLocale', (process.env.regionLocale || (configData.settings.regionLocale || 'en-US'))),
         //   configFile.set('settings.serviceDebug', true);
         //   configFile.set('settings.serviceTrace', true);
-        configFile.set('settings.serverPort', process.env.PORT || (configData.settings.serverPort || 8091));
+    configFile.set('settings.serverPort', process.env.PORT || (configData.settings.serverPort || 8091));
     configFile.set('settings.refreshSeconds', process.env.refreshSeconds ? parseInt(process.env.refreshSeconds) : (configData.settings.refreshSeconds || 60));
     if (!configData.state) {
         configData.state = {};
@@ -87,9 +92,13 @@ function loadConfig() {
 function startWebConfig() {
     return new Promise(function(resolve, reject) {
         try {
-            webApp.listen(configData.settings.serverPort, function() {
-                logger.info('** Echo Speaks Config Service (v' + appVer + ') is Running at (IP: ' + getIPAddress() + ' | Port: ' + configData.settings.serverPort + ') | ProcessId: ' + process.pid + ' **');
-            });
+            const certOptions = {
+                key: privateKey,
+                cert: certificate,
+           };
+           const server = https.createServer(certOptions, webApp).listen(configData.settings.serverPort, getIPAddress(), function() {
+               logger.info('** Echo Speaks Config Service (v' + appVer + ') is Running at (IP: ' + getIPAddress() + ' | Port: ' + configData.settings.serverPort + ') | ProcessId: ' + process.pid + ' **');
+           });
             webApp.use(function(req, res, next) {
                 res.header("Access-Control-Allow-Origin", "*");
                 res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
@@ -263,7 +272,7 @@ let clearAuth = function() {
     return new Promise(resolve => {
         logger.verbose('got request for to clear authentication');
         let clearUrl = configData.settings.smartThingsUrl ? String(configData.settings.smartThingsUrl).replace("/receiveData?", "/cookie?") : null;
-        clearSession(clearUrl, configData.settings.useHeroku);
+        clearSession(clearUrl);
         configFile.set('state.loginProxyActive', true);
         configData.state.loginProxyActive = true;
         runTimeData.authenticated = false;
@@ -293,7 +302,8 @@ function startWebServer(checkForCookie = false) {
         proxyHost: configData.settings.hostUrl,
         acceptLanguage: configData.settings.regionLocale,
         proxyRootPath: '/proxy',
-
+        logger: logger,
+//        proxyLogLevel: 'debug',
         stEndpoint: configData.settings.smartThingsUrl ? String(configData.settings.smartThingsUrl).replace("/receiveData?", "/cookie?") : null
     };
 
@@ -369,7 +379,7 @@ initConfig()
                             if (res === true) {
                                 if (configData.state.loginComplete === true || (configData.settings.hostUrl && configData.settings.smartThingsUrl)) {
                                     logger.info('-- Echo Speaks Web Service Starting Up! Takes about 10 seconds before it\'s available... --');
-                                    startWebServer((configData.settings.useHeroku === true && configData.settings.smartThingsUrl !== undefined));
+                                    startWebServer(configData.settings.smartThingsUrl !== undefined);
                                 } else {
                                     logger.info(`** Echo Speaks Web Service is Waiting for Amazon Login to Start... loginComplete: ${configData.state.loginComplete || undefined} | hostUrl: ${configData.settings.hostUrl || undefined} | smartThingsUrl: ${configData.settings.smartThingsUrl} **`);
                                 }
@@ -408,7 +418,7 @@ function alexaLogin(username, password, alexaOptions, callback) {
                     //   console.log('generateAlexaCookie error: ', err);
                     //   console.log('generateAlexaCookie result: ', result);
                     if (err && (err.message.startsWith('Login unsuccessful') || err.message.startsWith('Amazon-Login-Error:') || err.message.startsWith(' You can try to get the cookie manually by opening'))) {
-                        logger.debug('Please complete Amazon login by going here: (http://' + alexaOptions.proxyHost + ':' + alexaOptions.serverPort + '/config)');
+                        logger.debug('Please complete Amazon login by going here: (https://' + alexaOptions.proxyHost + ':' + alexaOptions.serverPort + '/config)');
                     } else if (err && !result) {
                         logger.error('generateAlexaCookie: ' + err.message);
                         callback(err, 'There was an error', null);
@@ -553,6 +563,7 @@ function getCookiesFromST(url) {
 ********************************************************************************/
 
 function getIPAddress() {
+    if (configData.settings.proxyOwnIp) return configData.settings.proxyOwnIp;
     let interfaces = os.networkInterfaces();
     for (const devName in interfaces) {
         let iface = interfaces[devName];

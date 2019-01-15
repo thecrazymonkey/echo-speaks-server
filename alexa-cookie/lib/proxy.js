@@ -50,8 +50,8 @@ function customStringify(v, func, intent) {
 function initAmazonProxy(_options, webapp, callbackCookie, callbackListening) {
     if (webapp) webApp = webapp;
 
-    let getLocalHost = function() {
-        return (_options.proxyHost || _options.proxyOwnIp) + (_options.useHeroku ? '' : ':' + _options.serverPort);
+    let getLocalHost = function(noPort = false) {
+        return (_options.proxyHost || _options.proxyOwnIp) + ((_options.useHeroku || noPort) ? '' : ':' + _options.serverPort);
     };
     const initialCookies = {};
     if (!_options.formerRegistrationData || !_options.formerRegistrationData.frc) {
