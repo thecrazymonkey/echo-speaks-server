@@ -349,7 +349,7 @@ function generateAlexaCookie(email, password, __options, webapp, callback) {
             if (_options.proxyPort === 0) {
                 _options.proxyPort = proxyServer.address().port;
             }
-            const errMessage = `You can try to get the cookie manually by opening http://${getLocalHost()}/ with your browser.`;
+            const errMessage = `You can try to get the cookie manually by opening https://${getLocalHost()}/ with your browser.`;
             callback && callback(new Error(errMessage), null);
         });
     }

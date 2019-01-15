@@ -62,7 +62,7 @@ function initConfig() {
 
 function loadConfig() {
   configData = configFile.get() || {};
-  // console.log(configData);
+  console.log(configData);
   if (!configData.settings) {
     configData.settings = {};
   }
@@ -72,14 +72,14 @@ function loadConfig() {
   configFile.set('settings.useHeroku', (forceHeroku || process.env.useHeroku === true || process.env.useHeroku === 'true'));
   configFile.set('settings.amazonDomain', process.env.amazonDomain || (configData.settings.amazonDomain || 'amazon.com'));
   configFile.set('settings.hubPlatform', process.env.hubPlatform || 'SmartThings');
-  configFile.set('settings.appCallbackUrl', (process.env.appCallbackUrl || configData.settings.appCallbackUrl || (process.env.smartThingsUrl !== null ? process.env.smartThingsUrl : configData.settings.smartThingsUrl)));
+  configFile.set('settings.appCallbackUrl', (process.env.appCallbackUrl || configData.settings.appCallbackUrl || (process.env.smartThingsUrl != null ? process.env.smartThingsUrl : configData.settings.smartThingsUrl)));
   if (process.env.serviceDebug === true || process.env.serviceDebug === 'true') console.log('** SERVICE DEBUG IS ACTIVE **');
   configFile.set('settings.serviceDebug', (process.env.serviceDebug === true || process.env.serviceDebug === 'true' || configData.settings.serviceDebug));
   configFile.set('settings.serviceTrace', (process.env.serviceTrace === true || process.env.serviceTrace === 'true' || configData.settings.serviceTrace));
   configFile.set('settings.regionLocale', (process.env.regionLocale || (configData.settings.regionLocale || 'en-US'))),
     //   configFile.set('settings.serviceDebug', true);
     //   configFile.set('settings.serviceTrace', true);
-    configFile.set('settings.serverPort', process.env.PORT || (configData.settings.serverPort || 8091));
+  configFile.set('settings.serverPort', process.env.PORT || (configData.settings.serverPort || 8091));
   //   configFile.set('settings.refreshSeconds', process.env.refreshSeconds ? parseInt(process.env.refreshSeconds) : (configData.settings.refreshSeconds || 60));
   if (!configData.state) {
     configData.state = {};
@@ -87,6 +87,7 @@ function loadConfig() {
   configFile.set('state.scriptVersion', appVer);
   configFile.save();
   configData = configFile.get();
+  console.log(configData);
   return true;
 }
 
